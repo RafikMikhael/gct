@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -11,4 +12,5 @@ func (app *App) Monitor() {
 	log.Fatal(http.ListenAndServe("localhost:8081", nil))
 }
 func (app *App) MonitorHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "PushChan=\n")
 }
