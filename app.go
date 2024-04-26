@@ -52,8 +52,3 @@ func (app *App) ErrorResponse(w http.ResponseWriter, code int, item string) {
 	w.WriteHeader(code)
 	w.Write([]byte(fmt.Sprintf("{\"error\":%s}", item)))
 }
-
-func (app *App) ValidResponse(w http.ResponseWriter, item string, size int) {
-	w.Header().Set("content-type", "application/json; charset=utf-8")
-	w.Write([]byte(fmt.Sprintf("{\"id\":%s,\"size\":%d}", item, size)))
-}

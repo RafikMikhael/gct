@@ -103,7 +103,8 @@ func (app *App) CreateJob(w http.ResponseWriter, r *http.Request) {
 		total += size
 	}
 
-	app.ValidResponse(w, string(job.Hash[:]), total)
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.Write([]byte(fmt.Sprintf("{\"id\":%s,\"size\":%d}", job.Hash[:], total)))
 }
 
 func hashThis(input, output string) string {
