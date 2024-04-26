@@ -43,13 +43,13 @@ func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Terminating server")
 }
 
-// Transcode - transcode the input path to output path according to quality
-func (app *App) Transcode(w http.ResponseWriter, r *http.Request) {
-	bandwidth := mux.Vars(r)["quality"]
-	inputPath := r.URL.Query().Get("inputpath")
-	outputPath := r.URL.Query().Get("outputpath")
-	width := r.URL.Query().Get("w")
-	height := r.URL.Query().Get("h")
-	fmt.Printf("bw=%v, in=%v, out=%v, w=%v, h=%v\n", bandwidth, inputPath, outputPath, width, height)
-	fmt.Fprintf(w, "bw=%v, in=%v, out=%v, w=%v, h=%v\n", bandwidth, inputPath, outputPath, width, height)
+func (app *App) ErrorResponse(w http.ResponseWriter, code int, item string) {
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write([]byte(fmt.Sprintf("{\"error\":%s}", item)))
+}
+
+func (app *App) ValidResponse(w http.ResponseWriter, item string) {
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.Write([]byte(fmt.Sprintf("{\"id\":%s}", item)))
 }
