@@ -37,8 +37,8 @@ type Job struct {
 	sizes chan int
 }
 
-// CreateJob - trigger the jobs encoding the input path to output path according to quality
-func (app *App) CreateJob(w http.ResponseWriter, r *http.Request) {
+// TriggerJobs - trigger the jobs encoding the input path to output path according to quality
+func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 	bandwidth := mux.Vars(r)["quality"]
 	inputPath := r.URL.Query().Get("inputpath")
 	outputPath := r.URL.Query().Get("outputpath")
@@ -79,11 +79,32 @@ func (app *App) CreateJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("creating Jobs for bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
-	//fmt.Fprintf(w, "bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
 
 	// produce the hash for tracking
 	job.Hash = hashThis(inputPath, outputPath)
 
+	go app.transcodeRenditions(job, inputPath, outputPath)
+
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.Write([]byte(fmt.Sprintf("{\"id\":%s}", job.Hash[:])))
+}
+
+func hashThis(input, output string) string {
+	timeInputString := time.Now().String() + input + output
+	hash := md5.Sum([]byte(timeInputString))
+	return hex.EncodeToString(hash[:])
+}
+func (app *App) transcodeRendition(job *Job, inputPath, outputPath string, brIdx RenditionIdx) {
+	defer job.wg.Done()
+	fmt.Printf("starting %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
+		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
+	time.Sleep(time.Duration(app.sleepTime[brIdx] * int(time.Second)))
+	fmt.Printf("finished %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
+		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
+	job.sizes <- app.sleepTime[brIdx] // simulation for size in bytes
+}
+
+func (app *App) transcodeRenditions(job *Job, inputPath, outputPath string) {
 	// trigger the 5 goroutines
 	job.wg.Add(5)
 	go app.transcodeRendition(job, inputPath, outputPath+"0", RATE0)
@@ -102,22 +123,5 @@ func (app *App) CreateJob(w http.ResponseWriter, r *http.Request) {
 	for size := range job.sizes {
 		total += size
 	}
-
-	w.Header().Set("content-type", "application/json; charset=utf-8")
-	w.Write([]byte(fmt.Sprintf("{\"id\":%s,\"size\":%d}", job.Hash[:], total)))
-}
-
-func hashThis(input, output string) string {
-	timeInputString := time.Now().String() + input + output
-	hash := md5.Sum([]byte(timeInputString))
-	return hex.EncodeToString(hash[:])
-}
-func (app *App) transcodeRendition(job *Job, inputPath, outputPath string, brIdx RenditionIdx) {
-	defer job.wg.Done()
-	fmt.Printf("starting %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
-		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
-	time.Sleep(time.Duration(app.sleepTime[brIdx] * int(time.Second)))
-	fmt.Printf("finished %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
-		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
-	job.sizes <- app.sleepTime[brIdx] // simulation for size in bytes
+	fmt.Printf("---job id %s finished with total size %d\n", job.Hash, total)
 }

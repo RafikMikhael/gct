@@ -38,7 +38,7 @@ func (app *App) Run() {
 
 	app.MuxRouter = mux.NewRouter().StrictSlash(true)
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
-	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.CreateJob)
+	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
 	log.Fatal(http.ListenAndServe(":8080", app.MuxRouter))
 }
 
