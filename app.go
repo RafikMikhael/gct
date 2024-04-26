@@ -8,20 +8,24 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Quality int
-
-const (
-	HIGH Quality = iota
-	MEDIUM
-	LOW
-)
-
 type App struct {
 	MuxRouter *mux.Router
+	bitRate   [3][5]int //[quality][renditionIdx]
+	horizW    [5]int    //rendition target width in pixels
+	vertH     [5]int    //rendition target height in pixels
+	sleepTime [5]int    //in seconds
 }
 
 // Initialize - initialize App fields and allocate all needed memory
 func (app *App) Initialize() {
+	app.bitRate = [3][5]int{
+		{160, 360, 1930, 4080, 7000},
+		{145, 300, 1600, 3400, 5800},
+		{120, 280, 1400, 3080, 4500},
+	}
+	app.horizW = [5]int{640, 768, 960, 1280, 1920}
+	app.vertH = [5]int{360, 432, 540, 720, 1080}
+	app.sleepTime = [5]int{10, 20, 30, 40, 50}
 }
 
 // Run - run the application (main go routine running forever)
@@ -34,7 +38,7 @@ func (app *App) Run() {
 
 	app.MuxRouter = mux.NewRouter().StrictSlash(true)
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
-	app.MuxRouter.HandleFunc("/api/v1/transcode/{quality}", app.Transcode)
+	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.CreateJob)
 	log.Fatal(http.ListenAndServe(":8080", app.MuxRouter))
 }
 

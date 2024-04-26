@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,13 +12,30 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Quality int
+type RenditionIdx int
+
+const (
+	HIGH Quality = iota
+	MEDIUM
+	LOW
+)
+
+const (
+	RATE0 RenditionIdx = iota
+	RATE1
+	RATE2
+	RATE3
+	RATE4
+)
+
 type Job struct {
 	Qual Quality
 	Hash string
 }
 
-// Transcode - transcode the input path to output path according to quality
-func (app *App) Transcode(w http.ResponseWriter, r *http.Request) {
+// CreateJob - trigger the jobs encoding the input path to output path according to quality
+func (app *App) CreateJob(w http.ResponseWriter, r *http.Request) {
 	bandwidth := mux.Vars(r)["quality"]
 	inputPath := r.URL.Query().Get("inputpath")
 	outputPath := r.URL.Query().Get("outputpath")
@@ -55,16 +73,32 @@ func (app *App) Transcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//fmt.Printf("bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
+	fmt.Printf("creating Jobs for bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
 	//fmt.Fprintf(w, "bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
 
-	// proceed with the transcode, produce the hash for tracking
+	// produce the hash for tracking
 	job.Hash = hashThis(inputPath, outputPath)
-	app.ValidResponse(w, string(job.Hash[:]))
+
+	// trigger the 5 goroutines
+	go app.transcodeRendition(job, inputPath, outputPath+"0", RATE0)
+	go app.transcodeRendition(job, inputPath, outputPath+"1", RATE1)
+	go app.transcodeRendition(job, inputPath, outputPath+"2", RATE2)
+	go app.transcodeRendition(job, inputPath, outputPath+"3", RATE3)
+	go app.transcodeRendition(job, inputPath, outputPath+"4", RATE4)
+
+	//app.ValidResponse(w, string(job.Hash[:]))
+
 }
 
 func hashThis(input, output string) string {
 	timeInputString := time.Now().String() + input + output
 	hash := md5.Sum([]byte(timeInputString))
 	return hex.EncodeToString(hash[:])
+}
+func (app *App) transcodeRendition(job *Job, inputPath, outputPath string, brIdx RenditionIdx) {
+	fmt.Printf("starting %s, outname=%s, w=%d, h=%d, bitrate=%d, duration=%d\n",
+		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
+	time.Sleep(time.Duration(app.sleepTime[brIdx] * int(time.Second)))
+	fmt.Printf("finished %s, outname=%s, w=%d, h=%d, bitrate=%d, duration=%d\n",
+		job.Hash, outputPath, app.horizW[brIdx], app.vertH[brIdx], app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
 }
