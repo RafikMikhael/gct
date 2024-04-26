@@ -25,7 +25,7 @@ func (app *App) Initialize() {
 	}
 	app.horizW = [5]int{640, 768, 960, 1280, 1920}
 	app.vertH = [5]int{360, 432, 540, 720, 1080}
-	app.sleepTime = [5]int{10, 20, 30, 40, 50}
+	app.sleepTime = [5]int{1, 2, 3, 4, 5}
 }
 
 // Run - run the application (main go routine running forever)
@@ -53,7 +53,7 @@ func (app *App) ErrorResponse(w http.ResponseWriter, code int, item string) {
 	w.Write([]byte(fmt.Sprintf("{\"error\":%s}", item)))
 }
 
-func (app *App) ValidResponse(w http.ResponseWriter, item string) {
+func (app *App) ValidResponse(w http.ResponseWriter, item string, size int) {
 	w.Header().Set("content-type", "application/json; charset=utf-8")
-	w.Write([]byte(fmt.Sprintf("{\"id\":%s}", item)))
+	w.Write([]byte(fmt.Sprintf("{\"id\":%s,\"size\":%d}", item, size)))
 }
