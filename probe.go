@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -16,12 +15,10 @@ func (app *App) ProbeHash(w http.ResponseWriter, r *http.Request) {
 		job.mu.Lock()
 		doneStr := strings.Join(job.DoneRenditions[:], ",")
 		job.mu.Unlock()
-		w.Header().Set("content-type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("{\"done\":%s}", doneStr)))
+		app.JsonHttpResponse(w, http.StatusOK, "done", doneStr)
 	} else {
 		// 204
-		app.ErrorResponse(w, http.StatusNotFound, "done", hash)
+		app.JsonHttpResponse(w, http.StatusNotFound, "done", hash)
 	}
 
 }

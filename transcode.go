@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +42,13 @@ type Job struct {
 
 // TriggerJobs - trigger the jobs encoding the input path to output path according to quality
 func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
+	// server instructed to stop as soon as its managed jobs are done
+	if app.bStopped {
+		// 503
+		app.JsonHttpResponse(w, http.StatusServiceUnavailable, "termination", "started")
+		return
+	}
+
 	bandwidth := mux.Vars(r)["quality"]
 	inputPath := r.URL.Query().Get("inputpath")
 	outputPath := r.URL.Query().Get("outputpath")
@@ -49,7 +57,7 @@ func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 
 	// verify the verb used
 	if r.Method != "POST" {
-		app.ErrorResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
+		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
 		return
 	}
 
@@ -66,34 +74,35 @@ func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 	case "low":
 		job.Qual = LOW
 	default:
-		app.ErrorResponse(w, http.StatusBadRequest, "error", "quality")
+		app.JsonHttpResponse(w, http.StatusBadRequest, "error", "quality")
 		return
 	}
 
 	// we only support wigth between 640 and 4K
 	if errW != nil || width < 640 || width > 3840 {
-		app.ErrorResponse(w, http.StatusBadRequest, "error", "width")
+		app.JsonHttpResponse(w, http.StatusBadRequest, "error", "width")
 		return
 	}
 	// we only support height between 480 and 4K
 	if errH != nil || height < 480 || height > 2176 {
-		app.ErrorResponse(w, http.StatusBadRequest, "error", "height")
+		app.JsonHttpResponse(w, http.StatusBadRequest, "error", "height")
 		return
 	}
 
-	fmt.Printf("creating Jobs for bw=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
+	fmt.Printf("creating Jobs for quality=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
 
 	// produce the hash for tracking
 	job.Hash = hashThis(inputPath, outputPath)
 
 	// as we reach this point, the job has valid inputs and a valid hash, we add it to Jobs map and start processing
+	app.mu.Lock()
 	app.Jobs[job.Hash] = job
+	app.mu.Unlock()
 
 	go app.startWorkers(job, inputPath, outputPath)
 
 	// write the response right away, so client can use the hash for probing
-	w.Header().Set("content-type", "application/json; charset=utf-8")
-	w.Write([]byte(fmt.Sprintf("{\"id\":%s}", job.Hash[:])))
+	app.JsonHttpResponse(w, http.StatusOK, "id", job.Hash[:])
 }
 
 func hashThis(input, output string) string {
@@ -140,5 +149,10 @@ func (app *App) startWorkers(job *Job, inputPath, outputPath string) {
 		total += size
 	}
 	fmt.Printf("---job id %s finished with total size %d\n", job.Hash, total)
+	app.mu.Lock()
+	defer app.mu.Unlock()
 	delete(app.Jobs, job.Hash)
+	if app.bStopped && len(app.Jobs) == 0 {
+		os.Exit(1)
+	}
 }

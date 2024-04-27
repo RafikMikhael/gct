@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 )
@@ -15,7 +16,9 @@ const (
 
 type App struct {
 	MuxRouter *mux.Router
+	mu        sync.Mutex
 	Jobs      map[string]*Job
+	bStopped  bool
 	// look-up tables
 	bitRate   [NumberOfQualityLvls][NumberOfRenditions]int //[quality][renditionIdx]
 	horizW    [NumberOfRenditions]int                      //rendition target width in pixels
@@ -39,8 +42,8 @@ func (app *App) Initialize() {
 
 // Run - run the application (main go routine running forever)
 func (app *App) Run() {
-	log.Print("transcode server starting up")
-	defer log.Print("transcode server shutting down")
+	log.Printf("transcode server starting up")
+	defer log.Printf("transcode server shutting down")
 
 	// monitor the App resources on port 8081
 	go app.Monitor()
@@ -54,10 +57,11 @@ func (app *App) Run() {
 
 // Terminate - cleanly close all go routines and recover resources
 func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Terminating server")
+	app.bStopped = true
+	app.JsonHttpResponse(w, http.StatusOK, "termination", "started")
 }
 
-func (app *App) ErrorResponse(w http.ResponseWriter, code int, key, value string) {
+func (app *App) JsonHttpResponse(w http.ResponseWriter, code int, key, value string) {
 	w.Header().Set("content-type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	w.Write([]byte(fmt.Sprintf("{\"%s\":%s}", key, value)))

@@ -14,5 +14,8 @@ func (app *App) Monitor() {
 	log.Fatal(http.ListenAndServe("localhost:8081", nil))
 }
 func (app *App) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "ongoing hashes=%v\n", maps.Keys(app.Jobs))
+	app.mu.Lock()
+	keys := maps.Keys(app.Jobs)
+	app.mu.Unlock()
+	fmt.Fprintf(w, "ongoing hashes=%v\n", keys)
 }
