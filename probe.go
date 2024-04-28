@@ -18,7 +18,7 @@ func (app *App) ProbeHash(w http.ResponseWriter, r *http.Request) {
 		app.JsonHttpResponse(w, http.StatusOK, "done", doneStr)
 	} else {
 		// 204
-		app.JsonHttpResponse(w, http.StatusNotFound, "done", hash)
+		app.JsonHttpResponse(w, http.StatusNoContent, "done", hash)
 	}
 
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -19,6 +20,7 @@ type App struct {
 	mu        sync.Mutex
 	Jobs      map[string]*Job
 	bStopped  bool
+	port      string
 	// look-up tables
 	bitRate   [NumberOfQualityLvls][NumberOfRenditions]int //[quality][renditionIdx]
 	horizW    [NumberOfRenditions]int                      //rendition target width in pixels
@@ -28,7 +30,7 @@ type App struct {
 }
 
 // Initialize - initialize App fields and allocate all needed memory
-func (app *App) Initialize() {
+func (app *App) Initialize(portNum *int) {
 	app.bitRate = [NumberOfQualityLvls][NumberOfRenditions]int{
 		{160, 360, 1930, 4080, 7000},
 		{145, 300, 1600, 3400, 5800},
@@ -38,6 +40,8 @@ func (app *App) Initialize() {
 	app.vertH = [NumberOfRenditions]int{360, 432, 540, 720, 1080}
 	app.sleepTime = [NumberOfRenditions]int{10, 20, 30, 40, 50}
 	app.Jobs = make(map[string]*Job)
+	fmt.Printf("portNum = %d\n", *portNum)
+	app.port = ":" + strconv.Itoa(*portNum)
 }
 
 // Run - run the application (main go routine running forever)
@@ -52,7 +56,7 @@ func (app *App) Run() {
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
 	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
 	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
-	log.Fatal(http.ListenAndServe(":8080", app.MuxRouter))
+	log.Fatal(http.ListenAndServe(app.port, app.MuxRouter))
 }
 
 // Terminate - cleanly close all go routines and recover resources

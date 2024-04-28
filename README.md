@@ -1,8 +1,10 @@
 # gct
-
+web server running on localhost port 8080 that manages transcode jobs from src to an ABR ladder 
 ## Terminal 1: build, run, server logs
 >>make all
 >>./gct
+Note: User can dictate the port number used using ">> ./gct -p 8085".
+      If no port number is given, 8080 will be used as default.
 
 ## Terminal 2: Post some number of jobs spaced by a few seconds (each post retruns hash instantly)
 >>curl -X POST "http://localhost:8080/api/v1/job/high?inputpath=%2Ftmp%2Fsrc&outputpath=%2Ftmp%2Fdst&w=1920&h=1080"
@@ -24,7 +26,7 @@ ongoing hashes=[]
 {"done":640x360,768x432}
 {"done":640x360,768x432,960x540}
 {"done":640x360,768x432,960x540,1280x720}
-{"done":7e4af802b6472cdfafb920e94006cf67}
+204 (when done)
 
 ## Terminal 2: inform the server to terminate after claiming all resources
 >>curl -X POST "http://localhost:8080/api/v1/terminate"
