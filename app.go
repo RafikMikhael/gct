@@ -25,7 +25,7 @@ type App struct {
 	mu        sync.Mutex
 	Jobs      map[string]*Job
 	bStopped  bool
-	port      string
+	Port      string
 
 	// stuff needed for graceful shutdown of server
 	Cancel      context.CancelFunc
@@ -50,7 +50,7 @@ func (app *App) Initialize(portNum *int) {
 	app.vertH = [NumberOfRenditions]int{360, 432, 540, 720, 1080}
 	app.sleepTime = [NumberOfRenditions]int{10, 20, 30, 40, 50}
 	app.Jobs = make(map[string]*Job)
-	app.port = ":" + strconv.Itoa(*portNum)
+	app.Port = ":" + strconv.Itoa(*portNum)
 
 	app.StopSignals = make(chan os.Signal, 1)
 	signal.Notify(app.StopSignals, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
@@ -74,7 +74,7 @@ func (app *App) Run() {
 	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
 
 	server := http.Server{
-		Addr:    app.port,
+		Addr:    app.Port,
 		Handler: app.MuxRouter,
 	}
 	// we can add any middleware here like corsHandler or LoggingHandler
