@@ -23,7 +23,7 @@ const (
 
 type App struct {
 	MuxRouter *mux.Router
-	mu        sync.Mutex
+	mu        sync.Mutex // mutex used to access Jobs map
 	Jobs      map[string]*Job
 	BStopped  bool
 	Port      string
@@ -42,8 +42,8 @@ type App struct {
 
 // Initialize - initialize App fields and allocate all needed memory
 func (app *App) Initialize(portNum *int) error {
-	if *portNum == 8081 {
-		return errors.New("can not use port 8081 as it is dedicated to monitoring")
+	if *portNum <= 1024 || *portNum >= 49151 {
+		return errors.New("port number should be between 1025 and 49150")
 	}
 
 	app.bitRate = [NumberOfQualityLvls][NumberOfRenditions]int{
@@ -78,6 +78,7 @@ func (app *App) Run() {
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
 	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
 	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
+	app.MuxRouter.HandleFunc("/api/v1/monitor", app.Monitor)
 
 	server := http.Server{
 		Addr:    app.Port,
@@ -89,9 +90,6 @@ func (app *App) Run() {
 			log.Fatalf("listen:%+s\n", err)
 		}
 	}()
-
-	// monitor the App resources on port 8081
-	go app.Monitor()
 
 	fmt.Printf("transcode server starting up\n")
 	<-app.Ctx.Done()

@@ -34,7 +34,7 @@ const (
 type Job struct {
 	Qual           Quality
 	Hash           string
-	mu             sync.Mutex
+	mu             sync.Mutex // mutex used to access DoneRenditions
 	DoneRenditions []string
 	wg             sync.WaitGroup
 	sizes          chan int

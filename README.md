@@ -23,7 +23,7 @@ curl -X POST "http://localhost:8080/api/v1/job/low?inputpath=%2Ftmp%2Fsrc&output
 
 ## Terminal 3: Monitor the number of jobs still processing
 ```
-curl "http://localhost:8081/"
+curl "http://localhost:8080/api/v1/monitor"
 ```  
 ongoing hashes=[49b252857f27f6faedef6fd7fab49524 9790281aa7676a3d57e60fc6368dd55b]  
 ongoing hashes=[]
