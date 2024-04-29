@@ -27,7 +27,7 @@ type App struct {
 	bStopped  bool
 	port      string
 
-	// Boilerplate stuff for graceful shutdown of server
+	// stuff needed for graceful shutdown of server
 	Cancel      context.CancelFunc
 	Ctx         context.Context
 	StopSignals chan os.Signal
@@ -37,7 +37,6 @@ type App struct {
 	horizW    [NumberOfRenditions]int                      //rendition target width in pixels
 	vertH     [NumberOfRenditions]int                      //rendition target height in pixels
 	sleepTime [NumberOfRenditions]int                      //in seconds
-
 }
 
 // Initialize - initialize App fields and allocate all needed memory
@@ -55,13 +54,18 @@ func (app *App) Initialize(portNum *int) {
 
 	app.StopSignals = make(chan os.Signal, 1)
 	signal.Notify(app.StopSignals, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
-	app.Ctx, app.Cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
+
 }
 
 // Run - run the application (main go routine running forever)
 func (app *App) Run() {
-	// monitor the App resources on port 8081
-	go app.Monitor()
+	// graceful shutdown can be triggered by /terminate or by ctrl+c
+	// https://medium.com/@pinkudebnath/graceful-shutdown-of-golang-servers-using-context-and-os-signals-cc1fa2c55e97
+	app.Ctx, app.Cancel = context.WithCancel(context.Background())
+	go func() {
+		<-app.StopSignals
+		app.Cancel()
+	}()
 
 	app.MuxRouter = mux.NewRouter().StrictSlash(true)
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
@@ -79,8 +83,23 @@ func (app *App) Run() {
 		}
 	}()
 
+	// monitor the App resources on port 8081
+	go app.Monitor()
+
 	log.Printf("transcode server starting up")
-	defer log.Printf("transcode server shutting down")
+	<-app.Ctx.Done()
+	log.Printf("server stopped")
+
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	if err := server.Shutdown(ctxShutDown); err != nil {
+		log.Fatalf("server Shutdown Failed:%+s", err)
+	}
+
+	log.Printf("transcode server shutting down")
 }
 
 // Terminate - cleanly close all go routines and recover resources
