@@ -9,6 +9,12 @@ import (
 
 // ProbeHash - Get info about a specific job with a knonw hash
 func (app *App) ProbeHash(w http.ResponseWriter, r *http.Request) {
+	// verify the verb used
+	if r.Method != "GET" {
+		// 405
+		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
+		return
+	}
 	hash := mux.Vars(r)["hash"]
 	job := app.Jobs[hash]
 	if job != nil {

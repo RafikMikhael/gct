@@ -40,7 +40,6 @@ func (app *App) Initialize(portNum *int) {
 	app.vertH = [NumberOfRenditions]int{360, 432, 540, 720, 1080}
 	app.sleepTime = [NumberOfRenditions]int{10, 20, 30, 40, 50}
 	app.Jobs = make(map[string]*Job)
-	fmt.Printf("portNum = %d\n", *portNum)
 	app.port = ":" + strconv.Itoa(*portNum)
 }
 
@@ -61,6 +60,12 @@ func (app *App) Run() {
 
 // Terminate - cleanly close all go routines and recover resources
 func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
+	// verify the verb used
+	if r.Method != "GET" {
+		// 405
+		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
+		return
+	}
 	app.bStopped = true
 	app.JsonHttpResponse(w, http.StatusOK, "termination", "started")
 }

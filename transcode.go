@@ -57,6 +57,7 @@ func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 
 	// verify the verb used
 	if r.Method != "POST" {
+		// 405
 		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
 		return
 	}

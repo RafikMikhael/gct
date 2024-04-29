@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"golang.org/x/exp/maps"
 )
@@ -18,4 +19,7 @@ func (app *App) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	keys := maps.Keys(app.Jobs)
 	app.mu.Unlock()
 	fmt.Fprintf(w, "ongoing hashes=%v\n", keys)
+	if app.bStopped && len(app.Jobs) == 0 {
+		os.Exit(1)
+	}
 }
