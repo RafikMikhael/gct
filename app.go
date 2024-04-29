@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -21,6 +26,12 @@ type App struct {
 	Jobs      map[string]*Job
 	bStopped  bool
 	port      string
+
+	// Boilerplate stuff for graceful shutdown of server
+	Cancel      context.CancelFunc
+	Ctx         context.Context
+	StopSignals chan os.Signal
+
 	// look-up tables
 	bitRate   [NumberOfQualityLvls][NumberOfRenditions]int //[quality][renditionIdx]
 	horizW    [NumberOfRenditions]int                      //rendition target width in pixels
@@ -41,13 +52,14 @@ func (app *App) Initialize(portNum *int) {
 	app.sleepTime = [NumberOfRenditions]int{10, 20, 30, 40, 50}
 	app.Jobs = make(map[string]*Job)
 	app.port = ":" + strconv.Itoa(*portNum)
+
+	app.StopSignals = make(chan os.Signal, 1)
+	signal.Notify(app.StopSignals, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
+	app.Ctx, app.Cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 }
 
 // Run - run the application (main go routine running forever)
 func (app *App) Run() {
-	log.Printf("transcode server starting up")
-	defer log.Printf("transcode server shutting down")
-
 	// monitor the App resources on port 8081
 	go app.Monitor()
 
@@ -55,7 +67,20 @@ func (app *App) Run() {
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
 	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
 	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
-	log.Fatal(http.ListenAndServe(app.port, app.MuxRouter))
+
+	server := http.Server{
+		Addr:    app.port,
+		Handler: app.MuxRouter,
+	}
+	// we can add any middleware here like corsHandler or LoggingHandler
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen:%+s\n", err)
+		}
+	}()
+
+	log.Printf("transcode server starting up")
+	defer log.Printf("transcode server shutting down")
 }
 
 // Terminate - cleanly close all go routines and recover resources

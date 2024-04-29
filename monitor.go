@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"syscall"
 
 	"golang.org/x/exp/maps"
 )
@@ -20,6 +20,6 @@ func (app *App) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	app.mu.Unlock()
 	fmt.Fprintf(w, "ongoing hashes=%v\n", keys)
 	if app.bStopped && len(app.Jobs) == 0 {
-		os.Exit(1)
+		app.StopSignals <- syscall.SIGINT
 	}
 }

@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -154,6 +154,6 @@ func (app *App) startWorkers(job *Job, inputPath, outputPath string) {
 	defer app.mu.Unlock()
 	delete(app.Jobs, job.Hash)
 	if app.bStopped && len(app.Jobs) == 0 {
-		os.Exit(1)
+		app.StopSignals <- syscall.SIGINT
 	}
 }
