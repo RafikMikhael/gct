@@ -42,7 +42,7 @@ curl  "http://localhost:8080/api/v1/probe/7e4af802b6472cdfafb920e94006cf67"
 
 ## Terminal 2: inform the server to terminate after finishing current jobs and claiming all resources
 ```
-curl -X POST "http://localhost:8080/api/v1/terminate"
+curl "http://localhost:8080/api/v1/terminate"
 ```
 
 ## Terminal 1: inform the server to terminate instantly after claiming all resources

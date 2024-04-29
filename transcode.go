@@ -43,7 +43,7 @@ type Job struct {
 // TriggerJobs - trigger the jobs encoding the input path to output path according to quality
 func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 	// server instructed to stop as soon as its managed jobs are done
-	if app.bStopped {
+	if app.BStopped {
 		// 503
 		app.JsonHttpResponse(w, http.StatusServiceUnavailable, "termination", "started")
 		return
@@ -153,7 +153,7 @@ func (app *App) startWorkers(job *Job, inputPath, outputPath string) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	delete(app.Jobs, job.Hash)
-	if app.bStopped && len(app.Jobs) == 0 {
+	if app.BStopped && len(app.Jobs) == 0 {
 		app.StopSignals <- syscall.SIGINT
 	}
 }

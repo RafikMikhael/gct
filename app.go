@@ -24,7 +24,7 @@ type App struct {
 	MuxRouter *mux.Router
 	mu        sync.Mutex
 	Jobs      map[string]*Job
-	bStopped  bool
+	BStopped  bool
 	Port      string
 
 	// stuff needed for graceful shutdown of server
@@ -89,7 +89,7 @@ func (app *App) Run() {
 
 	fmt.Printf("transcode server starting up\n")
 	<-app.Ctx.Done()
-	fmt.Printf("server stopped, via api = %v\n", app.bStopped)
+	fmt.Printf("server stopped, via api = %v\n", app.BStopped)
 
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer func() {
@@ -111,7 +111,7 @@ func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
 		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
 		return
 	}
-	app.bStopped = true
+	app.BStopped = true
 	app.JsonHttpResponse(w, http.StatusOK, "termination", "started")
 }
 

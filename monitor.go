@@ -19,7 +19,7 @@ func (app *App) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	keys := maps.Keys(app.Jobs)
 	app.mu.Unlock()
 	fmt.Fprintf(w, "ongoing hashes=%v\n", keys)
-	if app.bStopped && len(app.Jobs) == 0 {
+	if app.BStopped && len(app.Jobs) == 0 {
 		app.StopSignals <- syscall.SIGINT
 	}
 }
