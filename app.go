@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -40,7 +41,11 @@ type App struct {
 }
 
 // Initialize - initialize App fields and allocate all needed memory
-func (app *App) Initialize(portNum *int) {
+func (app *App) Initialize(portNum *int) error {
+	if *portNum == 8081 {
+		return errors.New("can not use port 8081 as it is dedicated to monitoring")
+	}
+
 	app.bitRate = [NumberOfQualityLvls][NumberOfRenditions]int{
 		{160, 360, 1930, 4080, 7000},
 		{145, 300, 1600, 3400, 5800},
@@ -55,6 +60,7 @@ func (app *App) Initialize(portNum *int) {
 	app.StopSignals = make(chan os.Signal, 1)
 	signal.Notify(app.StopSignals, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
 
+	return nil
 }
 
 // Run - run the application (main go routine running forever)
