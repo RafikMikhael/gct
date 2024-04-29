@@ -32,18 +32,18 @@ const (
 )
 
 type Job struct {
-	Qual           Quality
-	Hash           string
-	mu             sync.Mutex // mutex used to access DoneRenditions
-	DoneRenditions []string
+	qual           Quality
+	hash           string
+	mu             sync.Mutex // mutex used to access doneRenditions
+	doneRenditions []string
 	wg             sync.WaitGroup
 	sizes          chan int
 }
 
-// TriggerJobs - trigger the jobs encoding the input path to output path according to quality
-func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
+// triggerJobs - trigger the jobs encoding the input path to output path according to quality
+func (app *App) triggerJobs(w http.ResponseWriter, r *http.Request) {
 	// server instructed to stop as soon as its managed jobs are done
-	if app.BStopped {
+	if app.bStopped {
 		// 503
 		app.JsonHttpResponse(w, http.StatusServiceUnavailable, "termination", "started")
 		return
@@ -63,17 +63,17 @@ func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := &Job{
-		DoneRenditions: []string{},
+		doneRenditions: []string{},
 		sizes:          make(chan int, NumberOfRenditions),
 	}
 	// Do some validation
 	switch strings.ToLower(bandwidth) {
 	case "high":
-		job.Qual = HIGH
+		job.qual = HIGH
 	case "medium":
-		job.Qual = MEDIUM
+		job.qual = MEDIUM
 	case "low":
-		job.Qual = LOW
+		job.qual = LOW
 	default:
 		app.JsonHttpResponse(w, http.StatusBadRequest, "error", "quality")
 		return
@@ -90,20 +90,20 @@ func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("creating Jobs for quality=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
+	fmt.Printf("creating jobs for quality=%v, in=%v, out=%v, w=%d, h=%d\n", bandwidth, inputPath, outputPath, width, height)
 
 	// produce the hash for tracking
-	job.Hash = hashThis(inputPath, outputPath)
+	job.hash = hashThis(inputPath, outputPath)
 
-	// as we reach this point, the job has valid inputs and a valid hash, we add it to Jobs map and start processing
+	// as we reach this point, the job has valid inputs and a valid hash, we add it to jobs map and start processing
 	app.mu.Lock()
-	app.Jobs[job.Hash] = job
+	app.jobs[job.hash] = job
 	app.mu.Unlock()
 
 	go app.startWorkers(job, inputPath, outputPath)
 
 	// write the response right away, so client can use the hash for probing
-	app.JsonHttpResponse(w, http.StatusOK, "id", job.Hash[:])
+	app.JsonHttpResponse(w, http.StatusOK, "id", job.hash[:])
 }
 
 func hashThis(input, output string) string {
@@ -118,13 +118,13 @@ func (app *App) transcodeRendition(job *Job, inputPath, outputPath string, brIdx
 	myW := app.horizW[brIdx]
 	myH := app.vertH[brIdx]
 	fmt.Printf("starting %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
-		job.Hash, outputPath, myW, myH, app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
+		job.hash, outputPath, myW, myH, app.bitRate[job.qual][brIdx], app.sleepTime[brIdx])
 	time.Sleep(time.Duration(app.sleepTime[brIdx] * int(time.Second)))
 	fmt.Printf("finished %s, outname=%s, w=%4d, h=%4d, bitrate=%4d, duration=%d\n",
-		job.Hash, outputPath, myW, myH, app.bitRate[job.Qual][brIdx], app.sleepTime[brIdx])
+		job.hash, outputPath, myW, myH, app.bitRate[job.qual][brIdx], app.sleepTime[brIdx])
 
 	job.mu.Lock()
-	job.DoneRenditions = append(job.DoneRenditions, strconv.Itoa(myW)+`x`+strconv.Itoa(myH))
+	job.doneRenditions = append(job.doneRenditions, strconv.Itoa(myW)+`x`+strconv.Itoa(myH))
 	job.mu.Unlock()
 
 	job.sizes <- app.sleepTime[brIdx] // simulate size in KBytes to be the same as duration
@@ -149,11 +149,11 @@ func (app *App) startWorkers(job *Job, inputPath, outputPath string) {
 	for size := range job.sizes {
 		total += size
 	}
-	fmt.Printf("---job id %s finished with total size %d\n", job.Hash, total)
+	fmt.Printf("---job id %s finished with total size %d\n", job.hash, total)
 	app.mu.Lock()
 	defer app.mu.Unlock()
-	delete(app.Jobs, job.Hash)
-	if app.BStopped && len(app.Jobs) == 0 {
+	delete(app.jobs, job.hash)
+	if app.bStopped && len(app.jobs) == 0 {
 		app.StopSignals <- syscall.SIGINT
 	}
 }

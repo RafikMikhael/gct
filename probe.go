@@ -7,8 +7,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// ProbeHash - Get info about a specific job with a knonw hash
-func (app *App) ProbeHash(w http.ResponseWriter, r *http.Request) {
+// probeHash - Get info about a specific job with a knonw hash
+func (app *App) probeHash(w http.ResponseWriter, r *http.Request) {
 	// verify the verb used
 	if r.Method != "GET" {
 		// 405
@@ -16,10 +16,10 @@ func (app *App) ProbeHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hash := mux.Vars(r)["hash"]
-	job := app.Jobs[hash]
+	job := app.jobs[hash]
 	if job != nil {
 		job.mu.Lock()
-		doneStr := strings.Join(job.DoneRenditions[:], ",")
+		doneStr := strings.Join(job.doneRenditions[:], ",")
 		job.mu.Unlock()
 		app.JsonHttpResponse(w, http.StatusOK, "done", doneStr)
 	} else {

@@ -22,15 +22,15 @@ const (
 )
 
 type App struct {
-	MuxRouter *mux.Router
-	mu        sync.Mutex // mutex used to access Jobs map
-	Jobs      map[string]*Job
-	BStopped  bool
+	muxRouter *mux.Router
+	mu        sync.Mutex // mutex used to access jobs map
+	jobs      map[string]*Job
+	bStopped  bool
 	Port      string
 
 	// stuff needed for graceful shutdown of server
-	Cancel      context.CancelFunc
-	Ctx         context.Context
+	cancel      context.CancelFunc
+	ctx         context.Context
 	StopSignals chan os.Signal
 
 	// look-up tables
@@ -54,7 +54,7 @@ func (app *App) Initialize(portNum *int) error {
 	app.horizW = [NumberOfRenditions]int{640, 768, 960, 1280, 1920}
 	app.vertH = [NumberOfRenditions]int{360, 432, 540, 720, 1080}
 	app.sleepTime = [NumberOfRenditions]int{10, 20, 30, 40, 50}
-	app.Jobs = make(map[string]*Job)
+	app.jobs = make(map[string]*Job)
 	app.Port = ":" + strconv.Itoa(*portNum)
 
 	app.StopSignals = make(chan os.Signal, 1)
@@ -67,22 +67,22 @@ func (app *App) Initialize(portNum *int) error {
 func (app *App) Run() {
 	// graceful shutdown can be triggered by /terminate or by ctrl+c
 	// https://medium.com/@pinkudebnath/graceful-shutdown-of-golang-servers-using-context-and-os-signals-cc1fa2c55e97
-	app.Ctx, app.Cancel = context.WithCancel(context.Background())
+	app.ctx, app.cancel = context.WithCancel(context.Background())
 	go func() {
 		<-app.StopSignals
-		app.Cancel()
+		app.cancel()
 	}()
 
-	app.MuxRouter = mux.NewRouter().StrictSlash(true)
-	app.MuxRouter.HandleFunc("/_health", http.HandlerFunc(app.isupHandler))
-	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
-	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
-	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
-	app.MuxRouter.HandleFunc("/api/v1/monitor", app.Monitor)
+	app.muxRouter = mux.NewRouter().StrictSlash(true)
+	app.muxRouter.HandleFunc("/_health", http.HandlerFunc(app.isupHandler))
+	app.muxRouter.HandleFunc("/api/v1/terminate", app.terminate)
+	app.muxRouter.HandleFunc("/api/v1/job/{quality}", app.triggerJobs)
+	app.muxRouter.HandleFunc("/api/v1/probe/{hash}", app.probeHash)
+	app.muxRouter.HandleFunc("/api/v1/monitor", app.monitor)
 
 	server := http.Server{
 		Addr:    app.Port,
-		Handler: app.MuxRouter,
+		Handler: app.muxRouter,
 	}
 	// we can add any middleware here like corsHandler or LoggingHandler
 	go func() {
@@ -92,8 +92,8 @@ func (app *App) Run() {
 	}()
 
 	fmt.Printf("transcode server starting up\n")
-	<-app.Ctx.Done()
-	fmt.Printf("server stopped, via api = %v\n", app.BStopped)
+	<-app.ctx.Done()
+	fmt.Printf("server stopped, via api = %v\n", app.bStopped)
 
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer func() {
@@ -107,15 +107,15 @@ func (app *App) Run() {
 	fmt.Printf("transcode server shut down properly\n")
 }
 
-// Terminate - cleanly close all go routines and recover resources
-func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
+// terminate - cleanly close all go routines and recover resources
+func (app *App) terminate(w http.ResponseWriter, r *http.Request) {
 	// verify the verb used
 	if r.Method != "GET" {
 		// 405
 		app.JsonHttpResponse(w, http.StatusMethodNotAllowed, "error", r.Method)
 		return
 	}
-	app.BStopped = true
+	app.bStopped = true
 	app.JsonHttpResponse(w, http.StatusOK, "termination", "started")
 }
 

@@ -8,13 +8,13 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// Monitor - go routine that supports non-blocking stats for the App resources
-func (app *App) Monitor(w http.ResponseWriter, r *http.Request) {
+// monitor - go routine that supports non-blocking stats for the App resources
+func (app *App) monitor(w http.ResponseWriter, r *http.Request) {
 	app.mu.Lock()
-	keys := maps.Keys(app.Jobs)
+	keys := maps.Keys(app.jobs)
 	defer app.mu.Unlock()
 	fmt.Fprintf(w, "ongoing hashes=%v\n", keys)
-	if app.BStopped && len(app.Jobs) == 0 {
+	if app.bStopped && len(app.jobs) == 0 {
 		app.StopSignals <- syscall.SIGINT
 	}
 }
