@@ -68,6 +68,7 @@ func (app *App) Run() {
 	}()
 
 	app.MuxRouter = mux.NewRouter().StrictSlash(true)
+	app.MuxRouter.HandleFunc("/_health", http.HandlerFunc(app.isupHandler))
 	app.MuxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
 	app.MuxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
 	app.MuxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
@@ -86,20 +87,20 @@ func (app *App) Run() {
 	// monitor the App resources on port 8081
 	go app.Monitor()
 
-	log.Printf("transcode server starting up")
+	fmt.Printf("transcode server starting up\n")
 	<-app.Ctx.Done()
-	log.Printf("server stopped")
+	fmt.Printf("server stopped, via api = %v\n", app.bStopped)
 
-	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer func() {
 		cancel()
 	}()
 
 	if err := server.Shutdown(ctxShutDown); err != nil {
-		log.Fatalf("server Shutdown Failed:%+s", err)
+		log.Fatalf("server shutdown failed:%+s", err)
 	}
 
-	log.Printf("transcode server shutting down")
+	fmt.Printf("transcode server shut down properly\n")
 }
 
 // Terminate - cleanly close all go routines and recover resources
@@ -114,8 +115,17 @@ func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
 	app.JsonHttpResponse(w, http.StatusOK, "termination", "started")
 }
 
+// JsonHttpResponse - format a JSON http response using http Statu Code and key-value body
 func (app *App) JsonHttpResponse(w http.ResponseWriter, code int, key, value string) {
 	w.Header().Set("content-type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	w.Write([]byte(fmt.Sprintf("{\"%s\":%s}", key, value)))
+}
+
+// isupHandler - serve responses to _health GET requests needed by AWS
+func (app *App) isupHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: Should actually check something to verify the server is not stuck
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"up":true}`))
 }
