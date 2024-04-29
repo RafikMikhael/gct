@@ -1,12 +1,10 @@
 APPNAME := gct
-NEXTVERSION := 1.0.0
 
 # 'all' is the default target
 all: clean build setup-specs run-specs
 
 clean:
 	rm -f $(APPNAME)
-	rm -f long-stack
 	find . -type f -name "*coverprofile*" -delete
 	find . -type f -name "*coverage*" -delete
 	rm -rf vendor/
@@ -15,12 +13,6 @@ clean:
 # This make file only builds for linux OS. Modify GOOS here for local builds.
 build:
 	go build -o $(APPNAME)
-
-# build image with target NEXTVERSION, push to dockerhub for use by docker-compose.yml
-docker:
-	env GOOS=linux GOARCH=amd64 go build -o $(APPNAME)
-	docker build -t rmikhael/philo-stack:$(NEXTVERSION) -f Dockerfile .
-	docker push rmikhael/philo-stack:$(NEXTVERSION)
 
 run-linters:
 	gofmt -w -s .
@@ -45,4 +37,4 @@ test-coverage:
 run:
 	./$(APPNAME)
 
-.PHONY: clean all docker
+.PHONY: clean all

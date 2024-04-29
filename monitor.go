@@ -8,8 +8,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// monitor - go routine that supports non-blocking stats for the App resources
-func (app *App) monitor(w http.ResponseWriter, r *http.Request) {
+// Monitor - go routine that supports non-blocking stats for the App resources
+func (app *App) Monitor(w http.ResponseWriter, r *http.Request) {
 	app.mu.Lock()
 	keys := maps.Keys(app.jobs)
 	defer app.mu.Unlock()

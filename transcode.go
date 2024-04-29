@@ -34,14 +34,14 @@ const (
 type Job struct {
 	qual           Quality
 	hash           string
-	mu             sync.Mutex // mutex used to access doneRenditions
-	doneRenditions []string
+	mu             sync.Mutex // mutex used to access DoneRenditions
+	DoneRenditions []string
 	wg             sync.WaitGroup
 	sizes          chan int
 }
 
-// triggerJobs - trigger the jobs encoding the input path to output path according to quality
-func (app *App) triggerJobs(w http.ResponseWriter, r *http.Request) {
+// TriggerJobs - trigger the jobs encoding the input path to output path according to quality
+func (app *App) TriggerJobs(w http.ResponseWriter, r *http.Request) {
 	// server instructed to stop as soon as its managed jobs are done
 	if app.bStopped {
 		// 503
@@ -63,7 +63,7 @@ func (app *App) triggerJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := &Job{
-		doneRenditions: []string{},
+		DoneRenditions: []string{},
 		sizes:          make(chan int, NumberOfRenditions),
 	}
 	// Do some validation
@@ -124,7 +124,7 @@ func (app *App) transcodeRendition(job *Job, inputPath, outputPath string, brIdx
 		job.hash, outputPath, myW, myH, app.bitRate[job.qual][brIdx], app.sleepTime[brIdx])
 
 	job.mu.Lock()
-	job.doneRenditions = append(job.doneRenditions, strconv.Itoa(myW)+`x`+strconv.Itoa(myH))
+	job.DoneRenditions = append(job.DoneRenditions, strconv.Itoa(myW)+`x`+strconv.Itoa(myH))
 	job.mu.Unlock()
 
 	job.sizes <- app.sleepTime[brIdx] // simulate size in KBytes to be the same as duration

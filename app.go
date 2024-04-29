@@ -75,10 +75,10 @@ func (app *App) Run() {
 
 	app.muxRouter = mux.NewRouter().StrictSlash(true)
 	app.muxRouter.HandleFunc("/_health", http.HandlerFunc(app.isupHandler))
-	app.muxRouter.HandleFunc("/api/v1/terminate", app.terminate)
-	app.muxRouter.HandleFunc("/api/v1/job/{quality}", app.triggerJobs)
-	app.muxRouter.HandleFunc("/api/v1/probe/{hash}", app.probeHash)
-	app.muxRouter.HandleFunc("/api/v1/monitor", app.monitor)
+	app.muxRouter.HandleFunc("/api/v1/terminate", app.Terminate)
+	app.muxRouter.HandleFunc("/api/v1/job/{quality}", app.TriggerJobs)
+	app.muxRouter.HandleFunc("/api/v1/probe/{hash}", app.ProbeHash)
+	app.muxRouter.HandleFunc("/api/v1/monitor", app.Monitor)
 
 	server := http.Server{
 		Addr:    app.Port,
@@ -107,8 +107,8 @@ func (app *App) Run() {
 	fmt.Printf("transcode server shut down properly\n")
 }
 
-// terminate - cleanly close all go routines and recover resources
-func (app *App) terminate(w http.ResponseWriter, r *http.Request) {
+// Terminate - cleanly close all go routines and recover resources
+func (app *App) Terminate(w http.ResponseWriter, r *http.Request) {
 	// verify the verb used
 	if r.Method != "GET" {
 		// 405
